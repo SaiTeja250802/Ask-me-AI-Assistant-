@@ -11,25 +11,19 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Load the GROQ and Google API keys
 groq_api_key = os.getenv('GROQ_API_KEY')
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 
-# Load the external CSS file
 def load_css(file_name):
     with open(file_name) as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Load the CSS file
 load_css("style.css")
 
-# Initialize the ChatGroq model
 llm = ChatGroq(groq_api_key=groq_api_key, model_name="Gemma-7b-it")
 
-# Enhanced prompt template
 prompt_template_str = """
 You are an AI assistant with access to a collection of documents. Answer the questions based on the provided context only. Focus on relevant sections, headings, or keywords to provide the most accurate response. Use the following guidelines:
 
@@ -52,7 +46,7 @@ def embed_with_retries(embedding_function, texts, retries=3):
             return embedding_function(texts)
         except Exception as e:
             if attempt < retries - 1:
-                time.sleep(2)  # Wait a bit before retrying
+                time.sleep(2)  
             else:
                 st.error(f"Embedding failed after {retries} attempts: {e}")
                 return None
@@ -60,15 +54,14 @@ def embed_with_retries(embedding_function, texts, retries=3):
 def vector_embedding():
     if "vectors" not in st.session_state:
         st.session_state.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        st.session_state.loader = PyPDFDirectoryLoader("D:\\sample\\intern\\computer hub\\intern")  # Data Ingestion
-        st.session_state.docs = st.session_state.loader.load()  # Document Loading
-        st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)  # Chunk Creation
-        st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs[:20])  # Splitting
+        st.session_state.loader = PyPDFDirectoryLoader("your_path_to_the_pdf_document")  # Replace with actual path of your document 
+        st.session_state.docs = st.session_state.loader.load() 
+        st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)  
+        st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs[:20])  
         
-        # Embed documents with retries
         embeddings = embed_with_retries(st.session_state.embeddings.embed_documents, [doc.page_content for doc in st.session_state.final_documents])
         if embeddings is not None:
-            st.session_state.vectors = FAISS.from_texts([doc.page_content for doc in st.session_state.final_documents], st.session_state.embeddings)  # Vector embeddings
+            st.session_state.vectors = FAISS.from_texts([doc.page_content for doc in st.session_state.final_documents], st.session_state.embeddings) 
 
 def update_conversation_log(question, answer):
     """Append the question and answer to the log file."""
@@ -85,7 +78,6 @@ def get_context_from_log():
             context = f.read()
     return context
 
-# Embedding button section
 st.markdown('<div class="embedding-section">', unsafe_allow_html=True)
 col1, col2 = st.columns(2)
 with col1:
@@ -103,38 +95,35 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 st.markdown('<div class="header"><div class="title">AI Assistant</div><div class="status">Online</div></div>', unsafe_allow_html=True)
 
-# Chat content section
 st.markdown('<div class="chat-content">', unsafe_allow_html=True)
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Display previous chat history
 for chat in st.session_state.chat_history:
     st.markdown(f'<div class="message user"><div class="content">{chat["question"]}</div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="message bot"><div class="content">{chat["answer"]}</div></div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Input section at the bottom
 st.markdown('<div class="input-section">', unsafe_allow_html=True)
 prompt1 = st.text_input("Message AI Assistant", key="input_question", on_change=lambda: setattr(st.session_state, 'question_entered', True), placeholder="Enter your question here...")
 st.markdown('</div>', unsafe_allow_html=True)
 
 if "question_entered" in st.session_state and st.session_state.question_entered:
     st.session_state.question_entered = False
-    # Get previous context from the log file
+    
     context = get_context_from_log()
     
-    # Track previous question for context
+    
     if "previous_question" not in st.session_state:
         st.session_state.previous_question = ""
 
-    # Check if the new question refers to the previous one
+    
     if any(keyword in prompt1.lower() for keyword in ["it", "that", "those"]):
         prompt1 = f"{st.session_state.previous_question}. {prompt1}"
 
-    # Create the prompt template
+    
     prompt_template = ChatPromptTemplate.from_template(prompt_template_str)
     enhanced_prompt = prompt_template.format_prompt(context=context, input=prompt1)
 
@@ -142,7 +131,6 @@ if "question_entered" in st.session_state and st.session_state.question_entered:
     retriever = st.session_state.vectors.as_retriever()
     retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-    # Include the combined history in the input
     start = time.process_time()
     try:
         response = retrieval_chain.invoke({'input': prompt1, 'context': context})
@@ -154,14 +142,12 @@ if "question_entered" in st.session_state and st.session_state.question_entered:
     if "The provided text does not contain any information regarding" in answer or "Sorry, I couldn't find specific information" in answer:
         answer = "Please contact our business directly for further assistance."
 
-    # Add to chat history and display immediately
     st.session_state.chat_history.append({"question": prompt1, "answer": answer})
     st.markdown(f'<div class="message user"><div class="content">{prompt1}</div></div>', unsafe_allow_html=True)
     st.markdown(f'<div class="message bot"><div class="content">{answer}</div></div>', unsafe_allow_html=True)
 
-    # Update the conversation log
     update_conversation_log(prompt1, answer)
-    st.session_state.previous_question = prompt1  # Save the new question as the previous question for the next context
+    st.session_state.previous_question = prompt1 
 
     end = time.process_time()
     print(end-start)
