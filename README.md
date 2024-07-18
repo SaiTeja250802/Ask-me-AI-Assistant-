@@ -1,5 +1,5 @@
 
-# AskMe
+# AskMe : AI Assistant
 
 AskMe is an advanced AI assistant designed to transform the way enterprises interact with their vast repositories of documents. Utilizing cutting-edge natural language processing (NLP) and state-of-the-art AI technologies, AskMe provides instant, accurate, and context-aware responses to user queries, ensuring efficient information retrieval and enhanced productivity.
 
